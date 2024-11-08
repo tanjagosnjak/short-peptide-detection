@@ -1,0 +1,493 @@
+---
+title: "Rezultati"
+author: "Tanja Gošnjak"
+date: "2024-03-20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(RColorBrewer)
+```
+
+# SKUPAJ (modificirani + nemodificirani)
+```{r, echo=FALSE}
+data = read.csv("mega_merged_data.csv")
+```
+
+```{r, echo=FALSE}
+count_non_na_cells = function(df) {
+  sum(!is.na(df))
+}
+```
+
+
+```{r, echo=FALSE}
+#število rezultatov posameznega software-a po datotekah
+rezultati = as.data.frame(data %>%
+  group_by(sample) %>%
+  summarise_at(vars(AP_score, MM_score, MQ_score, MSF_probability), list(sum = count_non_na_cells))) %>%
+  rename(
+    AlphaPept = AP_score_sum,
+    MaxQuant = MQ_score_sum,
+    MSFragger = MSF_probability_sum,
+    MetaMorpheus = MM_score_sum
+    )
+```
+
+Tabela prikazuje koliko peptidov je detektiral posamezen program v določeni datoteki. Izmed vrstic, ki so se ujemale po ključu, smo izbrali tiste z najvišjimi vrednostmi 'Score'.
+
+```{r, echo=FALSE}
+df_new <- rezultati %>%
+            bind_rows(summarise(., across(where(is.numeric), sum),
+                                   across(where(is.character), ~'Skupaj'))) %>%
+  mutate(Skupaj = rowSums(across(where(is.numeric))))
+
+kable(df_new, caption = "Število detektiranih peptidov po datotekah", align = "c") %>%
+  kable_styling("striped",full_width = F)
+```
+
+```{r, echo=F}
+rezultati_long = rezultati %>%
+  pivot_longer(cols=c("AlphaPept","MaxQuant","MSFragger","MetaMorpheus"),
+               names_to = "software",
+               values_to = "št_peptidov")
+
+
+ggplot(rezultati_long, aes(x = reorder(software, -št_peptidov), y = št_peptidov, fill = reorder(sample, -št_peptidov))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Software", y = "Število peptidov", fill = "Datoteka") +
+  ggtitle("Število najdenih peptidov po programih")+
+  theme_minimal()
+```
+
+```{r, echo=F}
+ggplot(rezultati_long, aes(x = reorder(sample, -št_peptidov), y = št_peptidov, fill = reorder(software, -št_peptidov))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Datoteka", y = "Število peptidov", fill = "Software") +
+  ggtitle("Število najdenih peptidov po datotekah")+
+  theme_minimal()+
+  scale_fill_brewer(palette="Dark2")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+Za primerjavo najdenih peptidov smo uvedli ključ, po katerem se je peptid moral ujemati. To je: zapredje peptida, protein oz. proteini v katerem se peptid nahaja, prisotnost ter vrsta modifikacije.
+Preglednica prikazuje število različnih programov, ki so detektirali enak peptid po ključu v posamezni datoteki. 
+```{r, echo=FALSE}
+po_kljucu <- data.frame(sample = unique(data$sample), eden = numeric(length(unique(data$sample))))
+
+for (i in 1:length(unique(data$sample))) {
+  current_sample = unique(data$sample)[i]
+  subset_data = subset(data, sample == current_sample)
+  eden = sum(rowSums(is.na(subset_data)) == 3)
+  dva = sum(rowSums(is.na(subset_data)) == 2)
+  tri = sum(rowSums(is.na(subset_data)) == 1)
+  štiri = sum(rowSums(is.na(subset_data)) == 0)
+  po_kljucu[i, "eden"] <- eden
+  po_kljucu[i, "dva"] <- dva
+  po_kljucu[i, "tri"] <- tri
+  po_kljucu[i, "štiri"] <- štiri
+}
+
+po_kljucu_new <- po_kljucu %>%
+            bind_rows(summarise(., across(where(is.numeric), sum),
+                                   across(where(is.character), ~'Skupaj'))) %>%
+  mutate(Skupaj = rowSums(across(where(is.numeric))))
+
+kable(po_kljucu_new, caption = "", align = "c") %>%
+  kable_styling("striped",full_width = F)%>%
+  add_header_above(c("", "Število programov, ki je našlo peptid"=5))
+```
+
+
+```{r, echo=F}
+po_kljucu_long = po_kljucu %>%
+  pivot_longer(cols=c("eden","dva","tri","štiri"),
+               names_to = "razlicni_programi",
+               values_to = "št_peptidov")
+
+po_kljucu_long$razlicni_programi <- factor(po_kljucu_long$razlicni_programi, levels = c("eden", "dva", "tri", "štiri"))
+
+ggplot(po_kljucu_long, aes(x = reorder(razlicni_programi, -št_peptidov), y = št_peptidov, fill = reorder(sample, -št_peptidov))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Različni programi, ki so detektirali peptid", y = "Število peptidov", fill = "Datoteka") +
+  ggtitle("Število peptidov, ki so jih detektirali različni programi")+
+  theme_minimal()
+```
+
+```{r, echo=FALSE}
+ggplot(po_kljucu_long, aes(x = reorder(sample, -št_peptidov) , y = št_peptidov, fill = reorder(razlicni_programi, -št_peptidov))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Datoteka", y = "Število peptidov", fill = "Različni programi, \nki so detektirali peptid") +
+  ggtitle("Število peptidov, ki so jih detektirali različni programi")+
+  theme_minimal()+
+  scale_fill_brewer(palette="Dark2")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+Peptide, katere so našli trije programi, smo razčlenili v naslednji tabeli. Ta prikazuje, kateri od programov, ni našel peptida (število teh peptidov), ko so ostali trije programi detektirali peptid.
+```{r, echo=FALSE}
+trije = data.frame(sample = unique(data$sample), ni_AP = numeric(length(unique(data$sample))))
+
+for (i in 1:length(unique(data$sample))) {
+  current_sample = unique(data$sample)[i]
+  subset_data = subset(data, sample == current_sample)
+  ni_AP = sum(ifelse(is.na(subset_data[(rowSums(is.na(subset_data)) == 1), ]$AP_score)==TRUE, 1, 0))
+  ni_MSF = sum(ifelse(is.na(subset_data[(rowSums(is.na(subset_data)) == 1), ]$MSF_probability)==TRUE, 1, 0))
+  ni_MM = sum(ifelse(is.na(subset_data[(rowSums(is.na(subset_data)) == 1), ]$MM_score)==TRUE, 1, 0))
+  ni_MQ = sum(ifelse(is.na(subset_data[(rowSums(is.na(subset_data)) == 1), ]$MQ_score)==TRUE, 1, 0))
+  trije[i, "ni_AP"] <- ni_AP
+  trije[i, "ni_MSF"] <- ni_MSF
+  trije[i, "ni_MM"] <- ni_MM
+  trije[i, "ni_MQ"] <- ni_MQ
+}
+
+trije_new <- trije %>%
+            bind_rows(summarise(., across(where(is.numeric), sum),
+                                   across(where(is.character), ~'Skupaj'))) %>%
+  mutate(Skupaj = rowSums(across(where(is.numeric))))
+
+
+kable(trije_new, caption = "Program, ki ni našel peptida (število), ko so trije programi našli peptid", align = "c") %>%
+  kable_styling("striped",full_width = F)
+```
+
+
+```{r, echo=FALSE}
+trije_long = trije %>%
+  pivot_longer(cols=c("ni_AP","ni_MSF","ni_MM","ni_MQ"),
+               names_to = "program_ki_ni_našel_pepetida",
+               values_to = "št_peptidov")
+```
+
+```{r, echo=FALSE}
+ggplot(trije_long, aes(x = reorder(sample, -št_peptidov) , y = št_peptidov, fill = reorder(program_ki_ni_našel_pepetida, -št_peptidov))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Datoteka", y = "Število peptidov", fill = "Program, \nki ni detektiral peptida") +
+  ggtitle("Število peptidov, ki jih ni našel program, ko so ga detektirali ostali trije programi")+
+  theme_minimal()+
+  scale_fill_brewer(palette="Dark2")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+```{r, echo=FALSE}
+ggplot(trije_long, aes(x = reorder(program_ki_ni_našel_pepetida, -št_peptidov) , y = št_peptidov, fill = reorder(sample, -št_peptidov))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Program, \nki ni detektiral peptida", y = "Število peptidov", fill = "Datoteka") +
+  ggtitle("Število peptidov, ki jih ni našel program, ko so ga detektirali ostali trije programi")+
+  theme_minimal()
+```
+
+# MODIFICIRANI in NEMODIFICIRANI
+```{r}
+modified = as.data.frame(data %>%
+  filter(mods == "modified") %>%
+  group_by(sample) %>%
+  summarise_at(vars(AP_score, MM_score, MQ_score, MSF_probability), list(sum = count_non_na_cells))) %>%
+  rename(
+    AlphaPept = AP_score_sum,
+    MaxQuant = MQ_score_sum,
+    MSFragger = MSF_probability_sum,
+    MetaMorpheus = MM_score_sum
+    )
+```
+
+```{r}
+unmodified = as.data.frame(data %>%
+  filter(mods == "unmodified") %>%
+  group_by(sample) %>%
+  summarise_at(vars(AP_score, MM_score, MQ_score, MSF_probability), list(sum = count_non_na_cells))) %>%
+  rename(
+    AlphaPept = AP_score_sum,
+    MaxQuant = MQ_score_sum,
+    MSFragger = MSF_probability_sum,
+    MetaMorpheus = MM_score_sum
+    )
+```
+
+
+```{r}
+#modif
+df_new <- modified %>%
+            bind_rows(summarise(., across(where(is.numeric), sum),
+                                   across(where(is.character), ~'Skupaj'))) %>%
+  mutate(Skupaj = rowSums(across(where(is.numeric))))
+
+kable(df_new, caption = "Število detektiranih modificiranih peptidov po datotekah", align = "c") %>%
+  kable_styling("striped",full_width = F)
+```
+
+
+```{r}
+modified_long = modified %>%
+  pivot_longer(cols=c("AlphaPept","MaxQuant","MSFragger","MetaMorpheus"),
+               names_to = "software",
+               values_to = "št_peptidov")
+
+ggplot(modified_long, aes(x = reorder(software, -št_peptidov), y = št_peptidov, fill = reorder(sample, -št_peptidov))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Software", y = "Število peptidov", fill = "Datoteka") +
+  ggtitle("Število najdenih modificiranih peptidov po programih")+
+  theme_minimal()
+```
+
+
+
+```{r}
+
+#nemodif
+
+df_new <- unmodified %>%
+            bind_rows(summarise(., across(where(is.numeric), sum),
+                                   across(where(is.character), ~'Skupaj'))) %>%
+  mutate(Skupaj = rowSums(across(where(is.numeric))))
+
+kable(df_new, caption = "Število detektiranih nemodificiranih peptidov po datotekah", align = "c") %>%
+  kable_styling("striped",full_width = F)
+```
+
+
+```{r}
+unmodified_long = unmodified %>%
+  pivot_longer(cols=c("AlphaPept","MaxQuant","MSFragger","MetaMorpheus"),
+               names_to = "software",
+               values_to = "št_peptidov")
+
+ggplot(unmodified_long, aes(x = reorder(software, -št_peptidov), y = št_peptidov, fill = reorder(sample, -št_peptidov))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Software", y = "Število peptidov", fill = "Datoteka") +
+  ggtitle("Število najdenih nemodificiranih peptidov po programih")+
+  theme_minimal()
+```
+
+
+
+Po ključu modificirani.
+```{r}
+po_kljucu <- data.frame(sample = unique(data$sample), eden = numeric(length(unique(data$sample))))
+
+for (i in 1:length(unique(data$sample))) {
+  current_sample = unique(data$sample)[i]
+  subset_data = subset(data, sample == current_sample & mods=="modified")
+  eden = sum(rowSums(is.na(subset_data)) == 3)
+  dva = sum(rowSums(is.na(subset_data)) == 2)
+  tri = sum(rowSums(is.na(subset_data)) == 1)
+  štiri = sum(rowSums(is.na(subset_data)) == 0)
+  po_kljucu[i, "eden"] <- eden
+  po_kljucu[i, "dva"] <- dva
+  po_kljucu[i, "tri"] <- tri
+  po_kljucu[i, "štiri"] <- štiri
+}
+
+
+po_kljucu_new <- po_kljucu %>%
+            bind_rows(summarise(., across(where(is.numeric), sum),
+                                   across(where(is.character), ~'Skupaj'))) %>%
+  mutate(Skupaj = rowSums(across(where(is.numeric))))
+
+kable(po_kljucu_new, caption = "", align = "c") %>%
+  kable_styling("striped",full_width = F)%>%
+  add_header_above(c("", "Število programov, ki je našlo modificiran peptid"=5))
+```
+
+
+modificirani
+```{r}
+po_kljucu_new_modified = po_kljucu %>%
+  pivot_longer(cols=c("eden","dva","tri","štiri"),
+               names_to = "razlicni_programi",
+               values_to = "št_peptidov")
+
+po_kljucu_new_modified$razlicni_programi <- factor(po_kljucu_new_modified$razlicni_programi, levels = c("eden", "dva", "tri", "štiri"))
+
+ggplot(po_kljucu_new_modified, aes(x = reorder(razlicni_programi, -št_peptidov), y = št_peptidov, fill = reorder(sample, -št_peptidov))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Različni programi, ki so detektirali peptid", y = "Število peptidov", fill = "Datoteka") +
+  ggtitle("Število modificiranih peptidov, ki so jih detektirali različni programi")+
+  theme_minimal()
+```
+
+
+```{r}
+ggplot(po_kljucu_new_modified, aes(x = reorder(sample, -št_peptidov) , y = št_peptidov, fill = reorder(razlicni_programi, -št_peptidov))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Datoteka", y = "Število peptidov", fill = "Različni programi, \nki so detektirali peptid") +
+  ggtitle("Število modificiranih peptidov, ki so jih detektirali različni programi")+
+  theme_minimal()+
+  scale_fill_brewer(palette="Dark2")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+
+Po ključu nemodificiran.
+```{r}
+po_kljucu <- data.frame(sample = unique(data$sample), eden = numeric(length(unique(data$sample))))
+
+for (i in 1:length(unique(data$sample))) {
+  current_sample = unique(data$sample)[i]
+  subset_data = subset(data, sample == current_sample & mods=="unmodified")
+  eden = sum(rowSums(is.na(subset_data)) == 3)
+  dva = sum(rowSums(is.na(subset_data)) == 2)
+  tri = sum(rowSums(is.na(subset_data)) == 1)
+  štiri = sum(rowSums(is.na(subset_data)) == 0)
+  po_kljucu[i, "eden"] <- eden
+  po_kljucu[i, "dva"] <- dva
+  po_kljucu[i, "tri"] <- tri
+  po_kljucu[i, "štiri"] <- štiri
+}
+
+
+po_kljucu_new <- po_kljucu %>%
+            bind_rows(summarise(., across(where(is.numeric), sum),
+                                   across(where(is.character), ~'Skupaj'))) %>%
+  mutate(Skupaj = rowSums(across(where(is.numeric))))
+
+kable(po_kljucu_new, caption = "", align = "c") %>%
+  kable_styling("striped",full_width = F)%>%
+  add_header_above(c("", "Število programov, ki je našlo nemodificiran peptid"=5))
+```
+
+
+
+
+nemodificirani
+```{r}
+po_kljucu_new_unmodified = po_kljucu %>%
+  pivot_longer(cols=c("eden","dva","tri","štiri"),
+               names_to = "razlicni_programi",
+               values_to = "št_peptidov")
+
+po_kljucu_new_unmodified$razlicni_programi <- factor(po_kljucu_new_unmodified$razlicni_programi, levels = c("eden", "dva", "tri", "štiri"))
+
+ggplot(po_kljucu_new_unmodified, aes(x = reorder(razlicni_programi, -št_peptidov), y = št_peptidov, fill = reorder(sample, -št_peptidov))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Različni programi, ki so detektirali peptid", y = "Število peptidov", fill = "Datoteka") +
+  ggtitle("Število nemodificiranih peptidov, ki so jih detektirali različni programi")+
+  theme_minimal()
+```
+
+
+```{r}
+ggplot(po_kljucu_new_unmodified, aes(x = reorder(sample, -št_peptidov) , y = št_peptidov, fill = reorder(razlicni_programi, -št_peptidov))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Datoteka", y = "Število peptidov", fill = "Različni programi, \nki so detektirali peptid") +
+  ggtitle("Število nemodificiranih peptidov, ki so jih detektirali različni programi")+
+  theme_minimal()+
+  scale_fill_brewer(palette="Dark2")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+
+Ko so trije našli modificiran
+```{r}
+trije = data.frame(sample = unique(data$sample), ni_AP = numeric(length(unique(data$sample))))
+
+for (i in 1:length(unique(data$sample))) {
+  current_sample = unique(data$sample)[i]
+  subset_data = subset(data, sample == current_sample & mods == 'modified')
+  ni_AP = sum(ifelse(is.na(subset_data[(rowSums(is.na(subset_data)) == 1), ]$AP_score)==TRUE, 1, 0))
+  ni_MSF = sum(ifelse(is.na(subset_data[(rowSums(is.na(subset_data)) == 1), ]$MSF_probability)==TRUE, 1, 0))
+  ni_MM = sum(ifelse(is.na(subset_data[(rowSums(is.na(subset_data)) == 1), ]$MM_score)==TRUE, 1, 0))
+  ni_MQ = sum(ifelse(is.na(subset_data[(rowSums(is.na(subset_data)) == 1), ]$MQ_score)==TRUE, 1, 0))
+  trije[i, "ni_AP"] <- ni_AP
+  trije[i, "ni_MSF"] <- ni_MSF
+  trije[i, "ni_MM"] <- ni_MM
+  trije[i, "ni_MQ"] <- ni_MQ
+}
+
+trije_new <- trije %>%
+            bind_rows(summarise(., across(where(is.numeric), sum),
+                                   across(where(is.character), ~'Skupaj'))) %>%
+  mutate(Skupaj = rowSums(across(where(is.numeric))))
+
+
+kable(trije_new, caption = "Program, ki ni našel modificiranega peptida (število), ko so trije programi našli peptid", align = "c") %>%
+  kable_styling("striped",full_width = F)
+```
+
+
+```{r, echo=FALSE}
+trije_long = trije %>%
+  pivot_longer(cols=c("ni_AP","ni_MSF","ni_MM","ni_MQ"),
+               names_to = "program_ki_ni_našel_pepetida",
+               values_to = "št_peptidov")
+```
+
+```{r, echo=FALSE}
+ggplot(trije_long, aes(x = reorder(sample, -št_peptidov) , y = št_peptidov, fill = reorder(program_ki_ni_našel_pepetida, -št_peptidov))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Datoteka", y = "Število peptidov", fill = "Program, \nki ni detektiral peptida") +
+  ggtitle("Število modificiranih peptidov, ki jih ni našel program, ko so ga detektirali ostali trije programi")+
+  theme_minimal()+
+  scale_fill_brewer(palette="Dark2")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+
+```{r}
+ggplot(trije_long, aes(x = reorder(program_ki_ni_našel_pepetida, -št_peptidov) , y = št_peptidov, fill = reorder(sample, -št_peptidov))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Program, \nki ni detektiral peptida", y = "Število peptidov", fill = "Datoteka") +
+  ggtitle("Število modificiranih peptidov, ki jih ni našel program, ko so ga detektirali ostali trije programi")+
+  theme_minimal()
+```
+
+
+ko so trije našli nemodificiran
+```{r}
+#ko so trije našli nemodificiran
+
+trije = data.frame(sample = unique(data$sample), ni_AP = numeric(length(unique(data$sample))))
+
+for (i in 1:length(unique(data$sample))) {
+  current_sample = unique(data$sample)[i]
+  subset_data = subset(data, sample == current_sample & mods == 'unmodified')
+  ni_AP = sum(ifelse(is.na(subset_data[(rowSums(is.na(subset_data)) == 1), ]$AP_score)==TRUE, 1, 0))
+  ni_MSF = sum(ifelse(is.na(subset_data[(rowSums(is.na(subset_data)) == 1), ]$MSF_probability)==TRUE, 1, 0))
+  ni_MM = sum(ifelse(is.na(subset_data[(rowSums(is.na(subset_data)) == 1), ]$MM_score)==TRUE, 1, 0))
+  ni_MQ = sum(ifelse(is.na(subset_data[(rowSums(is.na(subset_data)) == 1), ]$MQ_score)==TRUE, 1, 0))
+  trije[i, "ni_AP"] <- ni_AP
+  trije[i, "ni_MSF"] <- ni_MSF
+  trije[i, "ni_MM"] <- ni_MM
+  trije[i, "ni_MQ"] <- ni_MQ
+}
+
+trije_new <- trije %>%
+            bind_rows(summarise(., across(where(is.numeric), sum),
+                                   across(where(is.character), ~'Skupaj'))) %>%
+  mutate(Skupaj = rowSums(across(where(is.numeric))))
+
+
+kable(trije_new, caption = "Program, ki ni našel nemodificiranega peptida (število), ko so trije programi našli peptid", align = "c") %>%
+  kable_styling("striped",full_width = F)
+```
+
+
+```{r, echo=FALSE}
+trije_long = trije %>%
+  pivot_longer(cols=c("ni_AP","ni_MSF","ni_MM","ni_MQ"),
+               names_to = "program_ki_ni_našel_pepetida",
+               values_to = "št_peptidov")
+```
+
+```{r, echo=FALSE}
+ggplot(trije_long, aes(x = reorder(sample, -št_peptidov) , y = št_peptidov, fill = reorder(program_ki_ni_našel_pepetida, -št_peptidov))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Datoteka", y = "Število peptidov", fill = "Program, \nki ni detektiral peptida") +
+  ggtitle("Število nemodificiranih peptidov, ki jih ni našel program, ko so ga detektirali ostali trije programi")+
+  theme_minimal()+
+  scale_fill_brewer(palette="Dark2")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+```{r}
+ggplot(trije_long, aes(x = reorder(program_ki_ni_našel_pepetida, -št_peptidov) , y = št_peptidov, fill = reorder(sample, -št_peptidov))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Program, \nki ni detektiral peptida", y = "Število peptidov", fill = "Datoteka") +
+  ggtitle("Število nemodificiranih peptidov, ki jih ni našel program, ko so ga detektirali ostali trije programi")+
+  theme_minimal()
+```
+
