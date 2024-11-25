@@ -9,12 +9,12 @@ Tanja Gošnjak
 
 ## Vsebina repozitorija
 Repozitorij vsebuje naslednje datoteke:  
-short_peptide_parser.ipynb - Skripta za pridobitev podatkov o številu identificiranih peptidov po uvedenem ključu (zaporedje, protein(i), vrsta mutacije).  
-results.Rmd - Skripta za vizualizacijo podatkov pridobljenih s short_peptide_parser.ipynb.  
-pepXML_parser.ipynb - Skripta za pridobitev podatkov o modificiranih peptidih iz pepXML datoteke.  
-parser_plots.ipynb - Skripta za primerjavo identificiranih peptidov in vizualizacijo rezultatov z Vennovim diagramom.  
-utils - Različne pomožne funkcije za obdelavo podatkov.  
-README.md - Opis projekta.  
+- short_peptide_parser.ipynb - Skripta za pridobitev podatkov o številu identificiranih peptidov po uvedenem ključu (zaporedje, protein(i), vrsta mutacije).  
+- results.Rmd - Skripta za vizualizacijo podatkov pridobljenih s short_peptide_parser.ipynb.  
+- pepXML_parser.ipynb - Skripta za pridobitev podatkov o modificiranih peptidih iz pepXML datoteke.  
+- parser_plots.ipynb - Skripta za primerjavo identificiranih peptidov in vizualizacijo rezultatov z Vennovim diagramom.  
+- utils.py - Različne pomožne funkcije za obdelavo podatkov.  
+- README.md - Opis projekta.  
 
 ## Namen magistrske naloge
 Namen magistrske naloge je bil raziskati in primerjati različne prosto dostopne bioinformatske programe za analizo masnih spektrov peptidov, s posebnim poudarkom na identifikaciji peptidov in njihovih modifikacij ter mutacij. Želeli smo oceniti zmogljivosti, uporabnost in jasnost dokumentacije teh programov, da bi raziskovalcem omogočili izbiro najprimernejšega orodja za njihove potrebe. S tem namenom smo uporabili štiri prosto dostopne programe: MSFragger (1), MetaMorpheus (2), AlphaPept (3) in MaxQuant (4), in izvedli primerjalno analizo njihovih rezultatov na podlagi podatkov iz podatkovne zbirke PRIDE. V okviru naloge smo se osredotočili na število identificiranih peptidov in občutljivost na post-translacijske modifikacije ter točkovne mutacije. Zanimala nas je primerljivost navedenih rezultatov med programi in z objavljenimi rezultati.
