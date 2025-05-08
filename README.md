@@ -1,4 +1,4 @@
-# Magistrska naloga: Detekcija kratkih petidov
+# Magistrska naloga: Detekcija modificiranih petidov
 To je zbirka skript, ki sem jih uporabila v okviru magistrske naloge na programu Biokemija, UL FKKT. Naloga se osredotoča na detekcijo kratkih petidov in vključuje analizo podatkov različnih programov za masno spektrometrijo.
 
 **Mentor**  
