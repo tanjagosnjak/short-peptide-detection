@@ -1,5 +1,5 @@
-# Magistrska naloga: Detekcija modificiranih petidov
-To je zbirka skript, ki sem jih uporabila v okviru magistrske naloge na programu Biokemija, UL FKKT. Naloga se osredotoča na detekcijo kratkih petidov in vključuje analizo podatkov različnih programov za masno spektrometrijo.
+# Magistrska naloga: Primerjava bioinformatskih orodij za detekcijo modificiranih peptidov
+To je zbirka skript in datotek, ki sem jih uporabila v okviru magistrske naloge na programu Biokemija, UL FKKT. Naloga se osredotoča na detekcijo kratkih petidov in vključuje analizo podatkov različnih programov za masno spektrometrijo.
 
 **Mentor**  
 izr. prof. dr. Tomaž Curk
@@ -13,7 +13,9 @@ Repozitorij vsebuje naslednje datoteke:
 - results.Rmd - Skripta za vizualizacijo podatkov pridobljenih s short_peptide_parser.ipynb.  
 - pepXML_parser.ipynb - Skripta za pridobitev podatkov o modificiranih peptidih iz pepXML datoteke.  
 - parser_plots.ipynb - Skripta za primerjavo identificiranih peptidov in vizualizacijo rezultatov z Vennovim diagramom.  
-- utils.py - Različne pomožne funkcije za obdelavo podatkov.  
+- utils.py - Različne pomožne funkcije za obdelavo podatkov.
+- mega_merged_data.csv - Združeni podatki rezultatov programov za masno spektrometrijo.
+- mapi podatki s podmapami rezultatov po programih za število in ujemanje identificiranih mutacij.  
 - README.md - Opis projekta.  
 
 ## Namen magistrske naloge
